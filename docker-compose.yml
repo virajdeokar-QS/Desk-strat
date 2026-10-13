@@ -1,0 +1,23 @@
+# Optional: run the app against Postgres instead of SQLite.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: strategy
+      POSTGRES_PASSWORD: strategy
+      POSTGRES_DB: strategy_desk
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strategy -d strategy_desk"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://strategy:strategy@db:5432/strategy_desk
+      DATA_SOURCE: ${DATA_SOURCE:-yfinance}
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+volumes:
+  pgdata:

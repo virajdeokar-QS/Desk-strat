@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strategy Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Main">
+    <div class="brand">Strategy Desk<small>Backtest, then paper-trade live</small></div>
+    <button class="nav-btn" data-view="backtest" aria-current="page">Backtest</button>
+    <button class="nav-btn" data-view="live">Live paper trading</button>
+    <div class="rail-foot">Data source: <b id="foot-source">-</b><br>API: <b id="foot-api">checking</b></div>
+  </nav>
+
+  <main class="stage">
+    <!-- BACKTEST -->
+    <section class="view" id="view-backtest">
+      <div>
+        <h1>Backtest</h1>
+        <p class="lede">Replay a strategy over historical bars with fees and slippage. The same strategy code and the same execution model run in the live view.</p>
+      </div>
+      <div class="panel">
+        <div class="fields">
+          <div class="field"><label for="bt-symbol">Symbol</label><input id="bt-symbol" class="wide" value="BTC-USD"></div>
+          <div class="field"><label for="bt-interval">Bar size</label><select id="bt-interval"></select></div>
+          <div class="field"><label for="bt-period">History</label>
+            <select id="bt-period"><option>30d</option><option selected>90d</option><option>180d</option><option>1y</option><option>2y</option><option>5y</option></select></div>
+          <div class="field"><label for="bt-strategy">Strategy</label><select id="bt-strategy"></select></div>
+          <div class="params" id="bt-params"></div>
+          <div class="field"><label for="bt-cash">Starting cash</label><input id="bt-cash" type="number" value="100000" min="1" style="width:110px"></div>
+          <div class="field"><label for="bt-fee">Fee (bps/side)</label><input id="bt-fee" type="number" value="5" min="0" step="0.5"></div>
+          <div class="field"><label for="bt-slip">Slippage (bps)</label><input id="bt-slip" type="number" value="2" min="0" step="0.5"></div>
+          <div class="field"><label for="bt-source">Data</label><select id="bt-source"><option value="">Server default</option><option value="yfinance">Yahoo Finance</option><option value="synthetic">Synthetic (demo)</option></select></div>
+          <button class="btn" id="bt-run">Run backtest</button>
+        </div>
+        <p class="hint" id="bt-desc"></p>
+        <div id="bt-error"></div>
+      </div>
+      <div id="bt-result" hidden>
+        <div id="bt-warnings"></div>
+        <div class="strip" id="bt-stats"></div>
+        <div class="panel" style="margin-top:16px"><h2>Equity: strategy vs buy and hold</h2><div class="chart-box"><canvas id="ch-equity"></canvas></div></div>
+        <div class="panel" style="margin-top:16px"><h2>Price with entries and exits</h2><div class="chart-box"><canvas id="ch-price"></canvas></div></div>
+        <div class="panel" style="margin-top:16px"><h2>Closed trades</h2><div class="table-wrap" id="bt-trades"></div></div>
+      </div>
+      <div class="panel"><h2>Saved runs</h2><div class="table-wrap" id="bt-history"></div></div>
+    </section>
+
+    <!-- LIVE -->
+    <section class="view" id="view-live" hidden>
+      <div>
+        <h1>Live paper trading</h1>
+        <p class="lede">Polls real market data, trades a simulated account when a bar closes, and stores every signal and fill. No real orders are ever sent.</p>
+      </div>
+      <div class="live-grid">
+        <div class="stack">
+          <div class="panel">
+            <h2>New session</h2>
+            <div class="fields">
+              <div class="field"><label for="lv-symbol">Symbol</label><input id="lv-symbol" class="wide" value="BTC-USD"></div>
+              <div class="field"><label for="lv-interval">Bar size</label><select id="lv-interval"></select></div>
+              <div class="field"><label for="lv-strategy">Strategy</label><select id="lv-strategy"></select></div>
+              <div class="params" id="lv-params"></div>
+              <div class="field"><label for="lv-cash">Starting cash</label><input id="lv-cash" type="number" value="100000" min="1" style="width:110px"></div>
+              <div class="field"><label for="lv-fee">Fee (bps)</label><input id="lv-fee" type="number" value="5" min="0" step="0.5"></div>
+              <div class="field"><label for="lv-slip">Slippage (bps)</label><input id="lv-slip" type="number" value="2" min="0" step="0.5"></div>
+              <div class="field"><label for="lv-poll">Poll (seconds)</label><input id="lv-poll" type="number" value="30" min="5"></div>
+              <div class="field"><label for="lv-source">Data</label><select id="lv-source"><option value="">Server default</option><option value="yfinance">Yahoo Finance</option><option value="synthetic">Synthetic (demo)</option></select></div>
+            </div>
+            <p class="hint">Crypto trades around the clock. US and Indian equities only move during their sessions.</p>
+            <div class="row-actions" style="margin-top:12px"><button class="btn live" id="lv-start">Start session</button></div>
+            <div id="lv-error"></div>
+          </div>
+          <div class="panel"><h2>Sessions</h2><div class="table-wrap" id="lv-sessions"></div></div>
+        </div>
+        <div class="stack" id="lv-detail">
+          <div class="panel empty">Start a session or pick one from the list to see its positions, fills and equity.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="tape" id="tape" aria-label="Log tape">
+    <div class="tape-head">
+      <strong>Log tape</strong>
+      <select id="tape-level" aria-label="Minimum level"><option value="info">All messages</option><option value="warning">Warnings and errors</option><option value="error">Errors only</option></select>
+      <button id="tape-pause">Pause</button>
+      <button id="tape-clear">Clear</button>
+      <button id="tape-collapse">Collapse</button>
+    </div>
+    <div class="tape-body" id="tape-body" data-min="info"></div>
+  </section>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
